@@ -89,7 +89,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
 
     def validate(self, attrs):
-        data = super().validate(attrs)  # raises if credentials are wrong
+        try:
+            data = super().validate(attrs)  # raises if credentials are wrong
+        except Exception:
+            username = attrs.get(self.username_field)
+            user = User.objects.filter(**{self.username_field: username}).first()
+            if user:
+                if not user.is_active:
+                    raise serializers.ValidationError(
+                        "Your account has been deactivated. Contact support."
+                    )
+                if not user.check_password(attrs.get("password", "")):
+                    raise serializers.ValidationError("Incorrect password.")
+            raise
 
         account = getattr(self.user, "account", None)
         if account is None:
